@@ -7,7 +7,7 @@ from app.models.speech_therapist import SpeechTherapist
 from app.models.specialization import Specialization
 from app.models.appointment import Appointment
 from app.models.visit_record import VisitRecord
-from app.models.speech_therapist_specialization import speech_therapist_specializations
+from app.models.speech_therapist_specialization import SpeechTherapistSpecialization
 
 from app.crud.user import (
     create_user,
@@ -66,7 +66,7 @@ def clear_database(db) -> None:
     """Очищает тестовые таблицы, чтобы скрипт можно было запускать повторно."""
     db.query(VisitRecord).delete()
     db.query(Appointment).delete()
-    db.execute(speech_therapist_specializations.delete())
+    db.query(SpeechTherapistSpecialization).delete()
     db.query(Patient).delete()
     db.query(SpeechTherapist).delete()
     db.query(Specialization).delete()
