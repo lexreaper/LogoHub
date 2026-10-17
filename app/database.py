@@ -4,7 +4,7 @@ from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 DATABASE_URL = "postgresql+psycopg2://postgres:postgres@localhost:5432/speech_center"
 
-engine = create_engine(DATABASE_URL, echo=True)
+engine = create_engine(DATABASE_URL, echo=False)
 
 SessionLocal = sessionmaker(
     bind=engine,
