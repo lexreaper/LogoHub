@@ -1,14 +1,7 @@
-"""REST API центра логопедии (ЛР2).
-
-Маршруты разделены на группы: авторизация, пользователи, пациенты,
-логопеды, специализации, записи на приём, результаты посещений.
-Проверки ролей нужны для дополнительного задания с JWT.
-"""
-
 from collections.abc import Generator
 from datetime import datetime
 from typing import Annotated
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, APIRouter
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -18,7 +11,9 @@ from app.models import User, Patient, SpeechTherapist, Specialization, Appointme
 from app.schemas.dto import Register, Login, Token, UserOut, UserUpdate, PatientOut, PatientUpdate, TherapistCreate, TherapistOut, TherapistUpdate, SpecCreate, SpecUpdate, SpecOut, AppointmentCreate, AppointmentUpdate, AppointmentOut, RecordCreate, RecordUpdate, RecordOut
 from app.security import hash_password, verify_password, create_token, decode_token
 # Создаём HTTP-приложение FastAPI.
-app = FastAPI(title='Центр логопедии — REST API', version='2.0')
+app = FastAPI(title='Центр: REST API', version='2.0')
+
+router = APIRouter(prefix='/api')
 bearer = HTTPBearer(auto_error=False)
 
 # Одна сессия PostgreSQL на один запрос.
@@ -89,12 +84,12 @@ def can_see_appointment(db, user, a):
         return a.speech_therapist_id == own_therapist(db, user).id
     return False
 
-@app.get('/health')
+@router.get('/health')
 def health():
     return {'status': 'ok'}
 
 # Регистрация пациента и вход в систему.
-@app.post('/auth/register', response_model=UserOut, status_code=201)
+@router.post('/auth/register', response_model=UserOut, status_code=201)
 def register(data: Register, db: DatabaseSession):
     if db.query(User).filter_by(email=data.email).first():
         raise HTTPException(409, 'Email already registered')
@@ -106,18 +101,18 @@ def register(data: Register, db: DatabaseSession):
     db.refresh(user)
     return user
 
-@app.post('/auth/login', response_model=Token)
+@router.post('/auth/login', response_model=Token)
 def login(data: Login, db: DatabaseSession):
     user = db.query(User).filter_by(email=data.email).first()
     if not user or not verify_password(data.password, user.password_hash):
         raise HTTPException(401, 'Invalid credentials')
     return Token(access_token=create_token(user.id))
 
-@app.get('/users/me', response_model=UserOut)
+@router.get('/users/me', response_model=UserOut)
 def me(user: CurrentUser):
     return user
 
-@app.patch('/users/me', response_model=UserOut)
+@router.patch('/users/me', response_model=UserOut)
 def edit_me(data: UserUpdate, db: DatabaseSession, user: CurrentUser):
     for key, value in data.model_dump(exclude_unset=True).items():
         if value is not None:
@@ -126,15 +121,15 @@ def edit_me(data: UserUpdate, db: DatabaseSession, user: CurrentUser):
     db.refresh(user)
     return user
 
-@app.get('/users', response_model=list[UserOut])
+@router.get('/users', response_model=list[UserOut])
 def users(db: DatabaseSession, admin: AdminUser):
     return db.query(User).all()
 
-@app.get('/users/{user_id}', response_model=UserOut)
+@router.get('/users/{user_id}', response_model=UserOut)
 def user_by_id(user_id: int, db: DatabaseSession, admin: AdminUser):
     return get_or_404(db, User, user_id)
 
-@app.delete('/users/{user_id}', status_code=204)
+@router.delete('/users/{user_id}', status_code=204)
 def delete_user(user_id: int, db: DatabaseSession, admin: AdminUser):
     if user_id == admin.id:
         raise HTTPException(400, 'Cannot delete own account')
@@ -144,11 +139,11 @@ def delete_user(user_id: int, db: DatabaseSession, admin: AdminUser):
     db.delete(user)
     save(db)
 
-@app.get('/patients/me', response_model=PatientOut)
+@router.get('/patients/me', response_model=PatientOut)
 def patient_me(db: DatabaseSession, user: CurrentUser):
     return own_patient(db, user)
 
-@app.patch('/patients/me', response_model=PatientOut)
+@router.patch('/patients/me', response_model=PatientOut)
 def edit_patient(data: PatientUpdate, db: DatabaseSession, user: CurrentUser):
     patient = own_patient(db, user)
     for key, value in data.model_dump(exclude_unset=True).items():
@@ -157,11 +152,11 @@ def edit_patient(data: PatientUpdate, db: DatabaseSession, user: CurrentUser):
     db.refresh(patient)
     return patient
 
-@app.get('/patients', response_model=list[PatientOut])
+@router.get('/patients', response_model=list[PatientOut])
 def patients(db: DatabaseSession, admin: AdminUser):
     return db.query(Patient).all()
 
-@app.get('/patients/{patient_id}', response_model=PatientOut)
+@router.get('/patients/{patient_id}', response_model=PatientOut)
 def patient_by_id(patient_id: int, db: DatabaseSession, user: CurrentUser):
     patient = get_or_404(db, Patient, patient_id)
     if user.role == 'admin' or (user.role == 'patient' and patient.user_id == user.id):
@@ -172,7 +167,7 @@ def patient_by_id(patient_id: int, db: DatabaseSession, user: CurrentUser):
             return patient
     raise HTTPException(403, 'Access denied')
 
-@app.post('/therapists', response_model=TherapistOut, status_code=201)
+@router.post('/therapists', response_model=TherapistOut, status_code=201)
 def create_therapist(data: TherapistCreate, db: DatabaseSession, admin: AdminUser):
     user = User(email=data.email, password_hash=hash_password(data.password), role='speech_therapist', full_name=data.full_name)
     db.add(user)
@@ -183,15 +178,15 @@ def create_therapist(data: TherapistCreate, db: DatabaseSession, admin: AdminUse
     db.refresh(therapist)
     return therapist
 
-@app.get('/therapists', response_model=list[TherapistOut])
+@router.get('/therapists', response_model=list[TherapistOut])
 def therapists(db: DatabaseSession):
     return db.query(SpeechTherapist).all()
 
-@app.get('/therapists/{therapist_id}', response_model=TherapistOut)
+@router.get('/therapists/{therapist_id}', response_model=TherapistOut)
 def therapist_by_id(therapist_id: int, db: DatabaseSession):
     return get_or_404(db, SpeechTherapist, therapist_id)
 
-@app.patch('/therapists/{therapist_id}', response_model=TherapistOut)
+@router.patch('/therapists/{therapist_id}', response_model=TherapistOut)
 def edit_therapist(therapist_id: int, data: TherapistUpdate, db: DatabaseSession, admin: AdminUser):
     obj = get_or_404(db, SpeechTherapist, therapist_id)
     for k, v in data.model_dump(exclude_unset=True).items():
@@ -200,7 +195,7 @@ def edit_therapist(therapist_id: int, data: TherapistUpdate, db: DatabaseSession
     db.refresh(obj)
     return obj
 
-@app.delete('/therapists/{therapist_id}', status_code=204)
+@router.delete('/therapists/{therapist_id}', status_code=204)
 def delete_therapist(therapist_id: int, db: DatabaseSession, admin: AdminUser):
     obj = get_or_404(db, SpeechTherapist, therapist_id)
     if db.query(Appointment).filter_by(speech_therapist_id=therapist_id).first():
@@ -209,7 +204,7 @@ def delete_therapist(therapist_id: int, db: DatabaseSession, admin: AdminUser):
     db.delete(obj)
     save(db)
 
-@app.post('/specializations', response_model=SpecOut, status_code=201)
+@router.post('/specializations', response_model=SpecOut, status_code=201)
 def create_spec(data: SpecCreate, db: DatabaseSession, admin: AdminUser):
     obj = Specialization(**data.model_dump())
     db.add(obj)
@@ -217,15 +212,15 @@ def create_spec(data: SpecCreate, db: DatabaseSession, admin: AdminUser):
     db.refresh(obj)
     return obj
 
-@app.get('/specializations', response_model=list[SpecOut])
+@router.get('/specializations', response_model=list[SpecOut])
 def specs(db: DatabaseSession):
     return db.query(Specialization).all()
 
-@app.get('/specializations/{spec_id}', response_model=SpecOut)
+@router.get('/specializations/{spec_id}', response_model=SpecOut)
 def spec_by_id(spec_id: int, db: DatabaseSession):
     return get_or_404(db, Specialization, spec_id)
 
-@app.patch('/specializations/{spec_id}', response_model=SpecOut)
+@router.patch('/specializations/{spec_id}', response_model=SpecOut)
 def edit_spec(spec_id: int, data: SpecUpdate, db: DatabaseSession, admin: AdminUser):
     obj = get_or_404(db, Specialization, spec_id)
     for k, v in data.model_dump(exclude_unset=True).items():
@@ -234,18 +229,18 @@ def edit_spec(spec_id: int, data: SpecUpdate, db: DatabaseSession, admin: AdminU
     db.refresh(obj)
     return obj
 
-@app.delete('/specializations/{spec_id}', status_code=204)
+@router.delete('/specializations/{spec_id}', status_code=204)
 def delete_spec(spec_id: int, db: DatabaseSession, admin: AdminUser):
     obj = get_or_404(db, Specialization, spec_id)
     obj.speech_therapists.clear()
     db.delete(obj)
     save(db)
 
-@app.get('/therapists/{therapist_id}/specializations', response_model=list[SpecOut])
+@router.get('/therapists/{therapist_id}/specializations', response_model=list[SpecOut])
 def therapist_specs(therapist_id: int, db: DatabaseSession):
     return get_or_404(db, SpeechTherapist, therapist_id).specializations
 
-@app.put('/therapists/{therapist_id}/specializations/{spec_id}', status_code=204)
+@router.put('/therapists/{therapist_id}/specializations/{spec_id}', status_code=204)
 def assign_spec(therapist_id: int, spec_id: int, db: DatabaseSession, admin: AdminUser):
     obj = get_or_404(db, SpeechTherapist, therapist_id)
     spec = get_or_404(db, Specialization, spec_id)
@@ -253,7 +248,7 @@ def assign_spec(therapist_id: int, spec_id: int, db: DatabaseSession, admin: Adm
         obj.specializations.append(spec)
         save(db)
 
-@app.delete('/therapists/{therapist_id}/specializations/{spec_id}', status_code=204)
+@router.delete('/therapists/{therapist_id}/specializations/{spec_id}', status_code=204)
 def unassign_spec(therapist_id: int, spec_id: int, db: DatabaseSession, admin: AdminUser):
     obj = get_or_404(db, SpeechTherapist, therapist_id)
     spec = get_or_404(db, Specialization, spec_id)
@@ -262,7 +257,7 @@ def unassign_spec(therapist_id: int, spec_id: int, db: DatabaseSession, admin: A
         save(db)
 
 # Пациент записывается на приём; логопед завершает приём.
-@app.post('/appointments', response_model=AppointmentOut, status_code=201)
+@router.post('/appointments', response_model=AppointmentOut, status_code=201)
 def create_appointment(data: AppointmentCreate, db: DatabaseSession, user: CurrentUser):
     if user.role != 'patient':
         raise HTTPException(403, 'Only patients can book')
@@ -276,7 +271,7 @@ def create_appointment(data: AppointmentCreate, db: DatabaseSession, user: Curre
     db.refresh(obj)
     return obj
 
-@app.get('/appointments', response_model=list[AppointmentOut])
+@router.get('/appointments', response_model=list[AppointmentOut])
 def appointments(db: DatabaseSession, user: CurrentUser):
     q = db.query(Appointment)
     if user.role == 'patient':
@@ -287,14 +282,14 @@ def appointments(db: DatabaseSession, user: CurrentUser):
         raise HTTPException(403)
     return q.all()
 
-@app.get('/appointments/{appointment_id}', response_model=AppointmentOut)
+@router.get('/appointments/{appointment_id}', response_model=AppointmentOut)
 def appointment_by_id(appointment_id: int, db: DatabaseSession, user: CurrentUser):
     obj = get_or_404(db, Appointment, appointment_id)
     if not can_see_appointment(db, user, obj):
         raise HTTPException(403)
     return obj
 
-@app.patch('/appointments/{appointment_id}', response_model=AppointmentOut)
+@router.patch('/appointments/{appointment_id}', response_model=AppointmentOut)
 def edit_appointment(appointment_id: int, data: AppointmentUpdate, db: DatabaseSession, user: CurrentUser):
     obj = get_or_404(db, Appointment, appointment_id)
     if not can_see_appointment(db, user, obj):
@@ -315,7 +310,7 @@ def edit_appointment(appointment_id: int, data: AppointmentUpdate, db: DatabaseS
     db.refresh(obj)
     return obj
 
-@app.delete('/appointments/{appointment_id}', status_code=204)
+@router.delete('/appointments/{appointment_id}', status_code=204)
 def delete_appointment(appointment_id: int, db: DatabaseSession, admin: AdminUser):
     obj = get_or_404(db, Appointment, appointment_id)
     if obj.visit_record:
@@ -323,7 +318,7 @@ def delete_appointment(appointment_id: int, db: DatabaseSession, admin: AdminUse
     db.delete(obj)
     save(db)
 
-@app.post('/visit-records', response_model=RecordOut, status_code=201)
+@router.post('/visit-records', response_model=RecordOut, status_code=201)
 def create_record(data: RecordCreate, db: DatabaseSession, therapist_user: TherapistUser):
     obj = get_or_404(db, Appointment, data.appointment_id)
     if obj.speech_therapist_id != own_therapist(db, therapist_user).id:
@@ -336,7 +331,7 @@ def create_record(data: RecordCreate, db: DatabaseSession, therapist_user: Thera
     db.refresh(record)
     return record
 
-@app.get('/visit-records', response_model=list[RecordOut])
+@router.get('/visit-records', response_model=list[RecordOut])
 def records(db: DatabaseSession, user: CurrentUser):
     q = db.query(VisitRecord).join(Appointment)
     if user.role == 'patient':
@@ -347,14 +342,14 @@ def records(db: DatabaseSession, user: CurrentUser):
         raise HTTPException(403)
     return q.all()
 
-@app.get('/visit-records/{record_id}', response_model=RecordOut)
+@router.get('/visit-records/{record_id}', response_model=RecordOut)
 def record_by_id(record_id: int, db: DatabaseSession, user: CurrentUser):
     record = get_or_404(db, VisitRecord, record_id)
     if not can_see_appointment(db, user, record.appointment):
         raise HTTPException(403)
     return record
 
-@app.patch('/visit-records/{record_id}', response_model=RecordOut)
+@router.patch('/visit-records/{record_id}', response_model=RecordOut)
 def edit_record(record_id: int, data: RecordUpdate, db: DatabaseSession, therapist_user: TherapistUser):
     obj = get_or_404(db, VisitRecord, record_id)
     if obj.appointment.speech_therapist_id != own_therapist(db, therapist_user).id:
@@ -365,10 +360,11 @@ def edit_record(record_id: int, data: RecordUpdate, db: DatabaseSession, therapi
     db.refresh(obj)
     return obj
 
-@app.delete('/visit-records/{record_id}', status_code=204)
+@router.delete('/visit-records/{record_id}', status_code=204)
 def delete_record(record_id: int, db: DatabaseSession, therapist_user: TherapistUser):
     obj = get_or_404(db, VisitRecord, record_id)
     if obj.appointment.speech_therapist_id != own_therapist(db, therapist_user).id:
         raise HTTPException(403)
     db.delete(obj)
     save(db)
+app.include_router(router)    
