@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package recommendation;
+
+service RecommendationService {
+    rpc Recommend(RecommendRequest) returns (RecommendResponse);
+}
+
+message Therapist {
+    int32 id = 1;
+    repeated int32 specialization_ids = 2;
+    int32 experience_years = 3;
+}
+
+message RecommendRequest {
+    int32 specialization_id = 1;
+    repeated Therapist therapists = 2;
+}
+
+message RecommendResponse {
+    repeated int32 therapist_ids = 1;
+}
