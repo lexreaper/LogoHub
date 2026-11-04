@@ -8,3 +8,6 @@ PyJWT
 pwdlib[argon2]
 httpx
 pytest
+grpcio>=1.85.1
+grpcio-tools
+protobuf>=7.35.1,<8

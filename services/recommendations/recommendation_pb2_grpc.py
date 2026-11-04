@@ -3,7 +3,7 @@
 import grpc
 import warnings
 
-import recommendation_pb2 as recommendation__pb2
+from services.recommendations import recommendation_pb2 as services_dot_recommendations_dot_recommendation__pb2
 
 GRPC_GENERATED_VERSION = '1.85.1'
 GRPC_VERSION = grpc.__version__
@@ -18,7 +18,7 @@ except ImportError:
 if _version_not_supported:
     raise RuntimeError(
         f'The grpc package installed is at version {GRPC_VERSION},'
-        + ' but the generated code in recommendation_pb2_grpc.py depends on'
+        + ' but the generated code in services/recommendations/recommendation_pb2_grpc.py depends on'
         + f' grpcio>={GRPC_GENERATED_VERSION}.'
         + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
         + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
@@ -36,8 +36,8 @@ class RecommendationServiceStub:
         """
         self.Recommend = channel.unary_unary(
                 '/recommendation.RecommendationService/Recommend',
-                request_serializer=recommendation__pb2.RecommendRequest.SerializeToString,
-                response_deserializer=recommendation__pb2.RecommendResponse.FromString,
+                request_serializer=services_dot_recommendations_dot_recommendation__pb2.RecommendRequest.SerializeToString,
+                response_deserializer=services_dot_recommendations_dot_recommendation__pb2.RecommendResponse.FromString,
                 _registered_method=True)
 
 
@@ -55,8 +55,8 @@ def add_RecommendationServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'Recommend': grpc.unary_unary_rpc_method_handler(
                     servicer.Recommend,
-                    request_deserializer=recommendation__pb2.RecommendRequest.FromString,
-                    response_serializer=recommendation__pb2.RecommendResponse.SerializeToString,
+                    request_deserializer=services_dot_recommendations_dot_recommendation__pb2.RecommendRequest.FromString,
+                    response_serializer=services_dot_recommendations_dot_recommendation__pb2.RecommendResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -84,8 +84,8 @@ class RecommendationService:
             request,
             target,
             '/recommendation.RecommendationService/Recommend',
-            recommendation__pb2.RecommendRequest.SerializeToString,
-            recommendation__pb2.RecommendResponse.FromString,
+            services_dot_recommendations_dot_recommendation__pb2.RecommendRequest.SerializeToString,
+            services_dot_recommendations_dot_recommendation__pb2.RecommendResponse.FromString,
             options,
             channel_credentials,
             insecure,

@@ -3,8 +3,7 @@ from concurrent import futures
 
 import grpc
 
-import recommendation_pb2
-import recommendation_pb2_grpc
+from services.recommendations import recommendation_pb2, recommendation_pb2_grpc
 
 
 class RecommendationService(

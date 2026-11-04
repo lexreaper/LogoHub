@@ -1,3 +1,5 @@
+import grpc
+from services.recommendations.client import recommend_therapists
 from collections.abc import Generator
 from datetime import datetime
 from typing import Annotated
@@ -83,6 +85,27 @@ def can_see_appointment(db, user, a):
     if user.role == 'speech_therapist':
         return a.speech_therapist_id == own_therapist(db, user).id
     return False
+
+
+#лаба 3
+
+@router.get('/therapists/recommendations', response_model=list[TherapistOut])
+def therapists_recommendations(specialization_id: int, db: DatabaseSession):
+    therapists = db.query(SpeechTherapist).all()
+    print(f"[FastAPI] Подбор: специализация={specialization_id}, кандидатов={len(therapists)}")
+    try:
+        recommended_ids = recommend_therapists(specialization_id, therapists)
+    except grpc.RpcError as exc:
+        print(f"[FastAPI] Ошибка gRPC: {exc.code()}")
+        raise HTTPException(status_code=503, detail="Recommendation service unavailable") from exc
+    print(f"[FastAPI] Получены рекомендованные ID: {recommended_ids}")
+    result = []
+    for id in recommended_ids:
+        for t in therapists:
+            if t.id == id:
+                result.append(t)
+    return result
+
 
 @router.get('/health')
 def health():
