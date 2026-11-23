@@ -1,4 +1,7 @@
 import grpc
+import logging
+from pika.exceptions import AMQPError
+from services.notifications.publisher import publish_appointment_created
 from services.recommendations.client import recommend_therapists
 from collections.abc import Generator
 from datetime import datetime
@@ -13,6 +16,7 @@ from app.models import User, Patient, SpeechTherapist, Specialization, Appointme
 from app.schemas.dto import Register, Login, Token, UserOut, UserUpdate, PatientOut, PatientUpdate, TherapistCreate, TherapistOut, TherapistUpdate, SpecCreate, SpecUpdate, SpecOut, AppointmentCreate, AppointmentUpdate, AppointmentOut, RecordCreate, RecordUpdate, RecordOut
 from app.security import hash_password, verify_password, create_token, decode_token
 # Создаём HTTP-приложение FastAPI.
+logger = logging.getLogger(__name__)
 app = FastAPI(title='Центр: REST API', version='2.0')
 
 router = APIRouter(prefix='/api')
@@ -292,6 +296,18 @@ def create_appointment(data: AppointmentCreate, db: DatabaseSession, user: Curre
     db.add(obj)
     save(db)
     db.refresh(obj)
+
+    # ЛР4: после сохранения записи публикуем событие в RabbitMQ.
+    try:
+        publish_appointment_created(
+            appointment_id=obj.id,
+            patient_id=obj.patient_id,
+            speech_therapist_id=obj.speech_therapist_id,
+        )
+    except (AMQPError, OSError):
+        # Запись уже сохранена: сбой уведомления не отменяет её создание.
+        logger.exception('Не удалось отправить уведомление в RabbitMQ для записи %s', obj.id)
+
     return obj
 
 @router.get('/appointments', response_model=list[AppointmentOut])
