@@ -14,6 +14,10 @@ def publish_appointment_created(
         pika.ConnectionParameters(
             host=os.getenv("RABBITMQ_HOST", "localhost"),
             port=int(os.getenv("RABBITMQ_PORT", "5672")),
+            credentials=pika.PlainCredentials(
+                os.getenv("RABBITMQ_USER", "guest"),
+                os.getenv("RABBITMQ_PASSWORD", "guest"),
+            ),
         )
     )
 

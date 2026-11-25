@@ -1,8 +1,9 @@
+import os
 import grpc
 from services.recommendations import recommendation_pb2, recommendation_pb2_grpc
 
 def recommend_therapists(specialization_id, therapists):
-    with grpc.insecure_channel("127.0.0.1:50051") as channel:
+    with grpc.insecure_channel(os.getenv("GRPC_TARGET", "127.0.0.1:50051")) as channel:
         client = recommendation_pb2_grpc.RecommendationServiceStub(channel)
         messages = []
 

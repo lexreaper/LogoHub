@@ -1,4 +1,5 @@
 
+import os
 from concurrent import futures
 
 import grpc
@@ -47,10 +48,11 @@ def serve():
         server
     )
 
-    server.add_insecure_port("127.0.0.1:50051")
+    address = os.getenv("GRPC_BIND", "127.0.0.1:50051")
+    server.add_insecure_port(address)
     server.start()
 
-    print("gRPC-сервер запущен на 127.0.0.1:50051")
+    print(f"gRPC-сервер запущен на {address}")
 
     server.wait_for_termination()
 
