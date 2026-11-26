@@ -68,5 +68,20 @@ services:
     depends_on:
       - api
 
+  notification-service:
+    build: .
+    image: speech-center-python:lab5
+    command: ["python", "-m", "uvicorn", "services.notifications.server:app", "--host", "0.0.0.0", "--port", "8001"]
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: "5672"
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8001:8001"
+      
 volumes:
   postgres_data:

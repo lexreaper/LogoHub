@@ -38,8 +38,8 @@ async def lifespan(app: FastAPI):
     connection = await aio_pika.connect_robust(
         host=os.getenv("RABBITMQ_HOST", "localhost"),
         port=int(os.getenv("RABBITMQ_PORT", "5672")),
-        login="guest",
-        password="guest",
+        login=os.getenv("RABBITMQ_USER", "guest"),
+        password=os.getenv("RABBITMQ_PASSWORD", "guest"),
     )
     async with connection:
         channel = await connection.channel()
