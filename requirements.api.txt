@@ -1,16 +1,10 @@
 SQLAlchemy
 psycopg2-binary
-alembic
 fastapi
 uvicorn[standard]
 pydantic[email]
 PyJWT
 pwdlib[argon2]
-httpx
-pytest
 grpcio>=1.85.1
-grpcio-tools
 protobuf>=7.35.1,<8
 pika==1.5.0
-aio-pika
-websockets

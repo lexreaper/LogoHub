@@ -1,0 +1,15 @@
+FROM python:3.13-slim
+
+WORKDIR /app
+ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
+
+COPY requirements.api.txt .
+RUN python -m pip install --no-cache-dir -r requirements.api.txt
+
+COPY app/ ./app/
+COPY init_db.py .
+COPY services/__init__.py ./services/
+COPY services/recommendations/ ./services/recommendations/
+COPY services/notifications/__init__.py services/notifications/publisher.py ./services/notifications/
+
+CMD ["sh", "-c", "python init_db.py && exec python -m uvicorn app.main:app --host 0.0.0.0 --port 8000"]

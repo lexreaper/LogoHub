@@ -30,16 +30,18 @@ services:
       retries: 20
 
   grpc-service:
-    build: .
-    image: speech-center-python:lab5
-    command: ["python", "-m", "services.recommendations.server"]
+    build:
+      context: .
+      dockerfile: Dockerfile.grpc
+    image: speech-center-grpc:lab5
     environment:
       GRPC_BIND: "0.0.0.0:50051"
 
   api:
-    build: .
-    image: speech-center-python:lab5
-    command: ["sh", "-c", "python init_db.py && exec python -m uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    image: speech-center-api:lab5
     environment:
       DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:?Set JWT_SECRET_KEY in .env}
@@ -69,9 +71,10 @@ services:
       - api
 
   notification-service:
-    build: .
-    image: speech-center-python:lab5
-    command: ["python", "-m", "uvicorn", "services.notifications.server:app", "--host", "0.0.0.0", "--port", "8001"]
+    build:
+      context: .
+      dockerfile: Dockerfile.notifications
+    image: speech-center-notifications:lab5
     environment:
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: "5672"

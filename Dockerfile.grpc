@@ -1,0 +1,12 @@
+FROM python:3.13-slim
+
+WORKDIR /app
+ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
+
+COPY requirements.grpc.txt .
+RUN python -m pip install --no-cache-dir -r requirements.grpc.txt
+
+COPY services/__init__.py ./services/
+COPY services/recommendations/ ./services/recommendations/
+
+CMD ["python", "-m", "services.recommendations.server"]
